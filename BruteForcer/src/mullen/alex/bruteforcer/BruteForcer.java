@@ -39,6 +39,18 @@ public final class BruteForcer {
     private static final int NS_IN_SECOND = 1000000000;
     /** Holds the message length for the raw method benchmark. */
     private static final int RAWMETHOD_BENCHMARK_MSGLENGTH = 3;
+    /** Holds the byte length of a MD5 digest. */
+    private static final int MD5_DIGEST_BYTELENGTH = 16;
+    /** Holds the byte length of a SHA-1 digest. */
+    private static final int SHA1_DIGEST_BYTELENGTH = 20;
+    /** Holds the byte length of a SHA-224 digest. */
+    private static final int SHA224_DIGEST_BYTELENGTH = 28;
+    /** Holds the byte length of a SHA-256 digest. */
+    private static final int SHA256_DIGEST_BYTELENGTH = 32;
+    /** Holds the byte length of a SHA-384 digest. */
+    private static final int SHA384_DIGEST_BYTELENGTH = 48;
+    /** Holds the byte length of a SHA-512 digest. */
+    private static final int SHA512_DIGEST_BYTELENGTH = 64;
     ////////////////////////////////////////////////////////////////////////////
     /**
      * Private constructor to disallow instantiation.
@@ -110,12 +122,53 @@ public final class BruteForcer {
             // Type not specified so try work out the type of hash.
             System.out.println(
                     "No hash type specified, will attempt to guess...");
-            // ...
+            hashType = guessHashType(hash);
+            if (hashType == null) {
+                throw new ParseException(
+                        "No hash type was specified and was unable to guess the"
+                        + " hash type!");
+            } else {
+                System.out.println("Guess result: " + hashType);
+            }
         }
         final int maxLength = parseMaxLength(args);
         final int maxThreads = parseThreads(args, 1);
         return new RawMethodConfiguration(hash, hashType, maxLength,
                 maxThreads);
+    }
+    /**
+     * Given a digest, will attempt to guess what algorithm generated the digest
+     * based on the length of it.
+     *
+     * @param hash  the raw digest
+     * @return      a string representing the guessed algorithm otherwise
+     *              <code>null</code> is returned if no reasonable guess could
+     *              be done
+     */
+    private static String guessHashType(final byte[] hash) {
+        String guess = null;
+        switch (hash.length) {
+            case MD5_DIGEST_BYTELENGTH:
+                guess = "MD5";
+                break;
+            case SHA1_DIGEST_BYTELENGTH:
+                guess = "SHA-1";
+                break;
+            case SHA224_DIGEST_BYTELENGTH:
+                guess = "SHA-224";
+                break;
+            case SHA256_DIGEST_BYTELENGTH:
+                guess = "SHA-256";
+                break;
+            case SHA384_DIGEST_BYTELENGTH:
+                guess = "SHA-384";
+                break;
+            case SHA512_DIGEST_BYTELENGTH:
+                guess = "SHA-512";
+                break;
+            default:
+        }
+        return guess;
     }
     /**
      * Performs the raw method of brute forcing.
