@@ -39,6 +39,7 @@ public final class BruteForcer {
     private static final int NS_IN_SECOND = 1000000000;
     /** Holds the message length for the raw method benchmark. */
     private static final int RAWMETHOD_BENCHMARK_MSGLENGTH = 3;
+    ////////////////////////////////////////////////////////////////////////////
     /** Holds the byte length of a MD5 digest. */
     private static final int MD5_DIGEST_BYTELENGTH = 16;
     /** Holds the byte length of a SHA-1 digest. */
@@ -51,6 +52,19 @@ public final class BruteForcer {
     private static final int SHA384_DIGEST_BYTELENGTH = 48;
     /** Holds the byte length of a SHA-512 digest. */
     private static final int SHA512_DIGEST_BYTELENGTH = 64;
+    ////////////////////////////////////////////////////////////////////////////
+    /** Represents the command line option for specifying the type. */
+    private static final String CMD_OPTION_TYPE = "type";
+    /** Represents the command line option for specifying the hash. */
+    private static final String CMD_OPTION_HASH = "hash";
+    /** Represents the command line option for specifying the method. */
+    private static final String CMD_OPTION_METHOD = "method";
+    /** Represents the command line option for specifying the maximum length. */
+    private static final String CMD_OPTION_MAXLENGTH = "maxlength";
+    /** Represents the command line option for specifying the set of chars. */
+    private static final String CMD_OPTION_CHARS = "chars";
+    /** Represents the command line option for specifying the thread count. */
+    private static final String CMD_OPTION_THREADS = "threads";
     ////////////////////////////////////////////////////////////////////////////
     /**
      * Private constructor to disallow instantiation.
@@ -75,24 +89,26 @@ public final class BruteForcer {
             InterruptedException {
         // Create the command line options.
         final Options options = new Options();
-        options.addOption("type", true, "the type of hash");
-        options.addOption("hash", true, "the hash in hexadecimal format");
-        options.addOption("method", true,
+        options.addOption(CMD_OPTION_TYPE, true, "the type of hash");
+        options.addOption(
+                CMD_OPTION_HASH, true, "the hash in hexadecimal format");
+        options.addOption(CMD_OPTION_METHOD, true,
                 "[raw|chars] the method for brute forcing");
-        options.addOption("chars", true,
+        options.addOption(CMD_OPTION_CHARS, true,
                 "the set of characters to use when method=chars");
-        options.addOption("maxlength", true,
+        options.addOption(CMD_OPTION_MAXLENGTH, true,
                 "the maximum message length in either chars or bytes to try");
-        options.addOption("threads", true, "the number of threads to use");
+        options.addOption(
+                CMD_OPTION_THREADS, true, "the number of threads to use");
         // Parse the command line arguments using the options we built.
         final CommandLineParser parser = new DefaultParser();
         final CommandLine cmd = parser.parse(options, args, false);
-        if (cmd.hasOption("method")) {
-            final String method = cmd.getOptionValue("method");
+        if (cmd.hasOption(CMD_OPTION_METHOD)) {
+            final String method = cmd.getOptionValue(CMD_OPTION_METHOD);
             if ("raw".equals(method)) {
                 rawMethod(parseRawConfiguration(cmd));
             } else if ("chars".equals(method)) {
-                charMethod(cmd);
+                charMethod(parseCharConfiguration(cmd));
             } else if ("dictionary".equals(method)) {
                 LOG.log(Level.SEVERE,
                         "Dictionary method chosen but not implemented yet!");
@@ -137,6 +153,39 @@ public final class BruteForcer {
                 maxThreads);
     }
     /**
+     * Parses a the command line arguments and creates a new
+     * {@link CharMethodConfiguration} that represents the job configuration.
+     *
+     * @param args  the command line arguments
+     * @return      the configuration
+     *
+     * @throws ParseException  if there was something wrong with the
+     *                         passed parameters or some were missing
+     */
+    private static CharMethodConfiguration parseCharConfiguration(
+            final CommandLine args) throws ParseException {
+        final byte[] hash = parseHash(args);
+        String hashType = parseHashType(args);
+        if (hashType == null) {
+            // Type not specified so try work out the type of hash.
+            System.out.println(
+                    "No hash type specified, will attempt to guess...");
+            hashType = guessHashType(hash);
+            if (hashType == null) {
+                throw new ParseException(
+                        "No hash type was specified and was unable to guess the"
+                        + " hash type!");
+            } else {
+                System.out.println("Guess result: " + hashType);
+            }
+        }
+        final int maxLength = parseMaxLength(args);
+        final int maxThreads = parseThreads(args, 1);
+        final char[] chars = parseChars(args);
+        return new CharMethodConfiguration(
+                hash, hashType, maxLength, maxThreads, chars);
+    }
+    /**
      * Given a digest, will attempt to guess what algorithm generated the digest
      * based on the length of it.
      *
@@ -167,6 +216,7 @@ public final class BruteForcer {
                 guess = "SHA-512";
                 break;
             default:
+                break;
         }
         return guess;
     }
@@ -213,12 +263,12 @@ public final class BruteForcer {
         final BigDecimal totalPermsDec = new BigDecimal(
                 calculateRawMethodPermutationCount(config.maxLength));
         System.out.println("Average speed: "
-                + NumberFormat.getInstance().format(totalPermsDec.divide( // Possible to divide by zero!
+                + NumberFormat.getInstance().format(totalPermsDec.divide(// TODO: Possible to divide by zero!
                         BigDecimal.valueOf(timeElapsedSecs), 2,
                         RoundingMode.HALF_DOWN)) + " perms/sec");
     }
     /**
-     * Prints out information about the job that was specified.
+     * Prints out information about the raw job that was specified.
      *
      * @param config  the job configuration
      */
@@ -240,6 +290,31 @@ public final class BruteForcer {
                 calculateRawMethodPermutationCount(config.maxLength);
         System.out.println("Total permuations possible: "
                 + NumberFormat.getInstance().format(totalPermutations));
+        System.out.println();
+    }
+    /**
+     * Prints out information about the char job that was specified.
+     *
+     * @param config  the job configuration
+     */
+    private static void printCharMethodJobDetails(
+            final CharMethodConfiguration config) {
+        System.out.println("Hash (" + config.getDigestType() + "): "
+                + DatatypeConverter.printHexBinary(config.getDigest()));
+
+        System.out.print("Using method 'chars' up to " + config.getMaxLength());
+        if (config.getMaxLength() > 1) {
+            System.out.print(" characters ");
+        } else {
+            System.out.print(" character ");
+        }
+        System.out.println("in length");
+
+        System.out.println("Thread count: " + config.getMaxThreads());
+//        final BigInteger totalPermutations =
+//                calculateRawMethodPermutationCount(config.getMaxLength());
+//        System.out.println("Total permuations possible: "
+//                + NumberFormat.getInstance().format(totalPermutations));
         System.out.println();
     }
     /**
@@ -309,39 +384,32 @@ public final class BruteForcer {
     /**
      * Performs the character method of brute forcing.
      *
-     * @param args  the passed command line arguments
+     * @param config  the configuration
+     *
      * @throws NoSuchAlgorithmException  if the system does not provide a
      *                                   an implementation of the requested
      *                                   digest algorithm
-     *
-     * @throws ParseException            if there was something wrong with the
-     *                                   passed parameters or some were missing
+     * @throws InterruptedException      if the process is interrupted whilst
+     *                                   waiting for tasks to finish
      */
-    private static void charMethod(final CommandLine args)
-            throws NoSuchAlgorithmException, ParseException {
-        final byte[] hash = parseHash(args);
-        final String hashType = parseHashType(args);
-        if (hashType == null) {
-            // Type not specified so try work out the type of hash.
-            System.out.println(
-                    "No hash type specified, will attempt to guess...");
-        }
-        final int maxLength = parseMaxLength(args);
-        final int threads = parseThreads(args, 1);
-        final char[] chars = parseChars(args);
-        ////////////////////////////////////////////////////////////////////////
+    private static void charMethod(final CharMethodConfiguration config)
+            throws NoSuchAlgorithmException, InterruptedException {
+        printCharMethodJobDetails(config);
         final ExecutorService executor =
-                Executors.newFixedThreadPool(threads);
+                Executors.newFixedThreadPool(config.getMaxThreads());
         // Split the work up by each character in the key set.
-        for (final char c : chars) {
+        for (final char c : config.getCharacters()) {
             final StrippedStringBuilder sb =
-                    new StrippedStringBuilder(maxLength);
+                    new StrippedStringBuilder(config.getMaxLength());
             sb.append(c);
             executor.execute(new CharacterBruteForcerTask(
-                    MessageDigest.getInstance(hashType),
-                    hash,
-                    chars, maxLength, sb));
+                    MessageDigest.getInstance(config.getDigestType()),
+                    config.getDigest(),
+                    config.getCharacters(), config.getMaxLength(), sb));
         }
+        // Shutdown and wait for the tasks to finish.
+        executor.shutdown();
+        executor.awaitTermination(Long.MAX_VALUE, TimeUnit.DAYS);
     }
     /**
      * Parses the hash from the command line arguments. (-hash)
@@ -353,8 +421,8 @@ public final class BruteForcer {
      */
     private static byte[] parseHash(final CommandLine args)
             throws ParseException {
-        if (args.hasOption("hash")) {
-            final String hashString = args.getOptionValue("hash");
+        if (args.hasOption(CMD_OPTION_HASH)) {
+            final String hashString = args.getOptionValue(CMD_OPTION_HASH);
             return DatatypeConverter.parseHexBinary(hashString);
         } else {
             throw new ParseException("No hash was specified. (-hash)");
@@ -368,7 +436,7 @@ public final class BruteForcer {
      *              <code>null</code> if the type was not specified
      */
     private static String parseHashType(final CommandLine args) {
-        return args.getOptionValue("type");
+        return args.getOptionValue(CMD_OPTION_TYPE);
     }
     /**
      * Parses the maximum length command line option from the command line
@@ -382,8 +450,9 @@ public final class BruteForcer {
      */
     private static int parseMaxLength(final CommandLine args)
             throws ParseException {
-        if (args.hasOption("maxlength")) {
-            final String maxLengthStr = args.getOptionValue("maxlength");
+        if (args.hasOption(CMD_OPTION_MAXLENGTH)) {
+            final String maxLengthStr =
+                    args.getOptionValue(CMD_OPTION_MAXLENGTH);
             final int maxLength = Integer.parseInt(maxLengthStr);
             if (maxLength < 1) {
                 throw new ParseException(
@@ -409,8 +478,8 @@ public final class BruteForcer {
      */
     private static int parseThreads(final CommandLine args,
             final int defaultVal) throws ParseException {
-        if (args.hasOption("threads")) {
-            final String threadsStr = args.getOptionValue("threads");
+        if (args.hasOption(CMD_OPTION_THREADS)) {
+            final String threadsStr = args.getOptionValue(CMD_OPTION_THREADS);
             final int threads = Integer.parseInt(threadsStr);
             if (threads < 1) {
                 throw new ParseException(
@@ -434,8 +503,8 @@ public final class BruteForcer {
      */
     private static char[] parseChars(final CommandLine args)
             throws ParseException {
-        if (args.hasOption("chars")) {
-            final String charsStr = args.getOptionValue("chars");
+        if (args.hasOption(CMD_OPTION_CHARS)) {
+            final String charsStr = args.getOptionValue(CMD_OPTION_CHARS);
             return charsStr.toCharArray();
         } else {
             throw new ParseException("No characters were specified. (-chars)");
