@@ -1,4 +1,4 @@
-package mullen.alex.bruteforcer;
+package mullen.alex.bruteforcer.characters;
 
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
@@ -9,8 +9,11 @@ import java.security.DigestException;
 import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import mullen.alex.bruteforcer.Configuration;
 
 /**
  * Represents a character set brute forcer task that generates every possible
@@ -36,6 +39,8 @@ public class CharacterBruteForcerTask implements Runnable {
     private final int maxMessageLength;
     /** The current generated message. */
     private final StrippedStringBuilder messageBuilder;
+    /** The action to take when a successful message is found. */
+    private final Consumer<byte[]> foundAction;
     ////////////////////////////////////////////////////////////////////////////
     /** A reusable buffer for storing a generated digest. */
     private final byte[] digestBuffer;
@@ -49,20 +54,22 @@ public class CharacterBruteForcerTask implements Runnable {
      * Creates a new instance.
      *
      * @param algo            the algorithm to use
-     * @param h               the hash to brute force
-     * @param charSpace       the character space to use
-     * @param maxLength       the maximum length of message to generate
+     * @param config          the configuration details
      * @param initalMessage   the initial prefix message to start with
+     * @param action          the action to take when a message is found
      */
     public CharacterBruteForcerTask(final MessageDigest algo,
-            final byte[] h, final char[] charSpace,
-            final int maxLength, final StrippedStringBuilder initalMessage) {
+            final Configuration config,
+            final StrippedStringBuilder initalMessage,
+            final Consumer<byte[]> action) {
         // Passed parameters.
         algorithm = Objects.requireNonNull(algo);
-        hash = Arrays.copyOf(h, h.length);
-        characterSpace = Arrays.copyOf(charSpace, charSpace.length);
+        hash = Arrays.copyOf(config.getDigest(), config.getDigest().length);
+        final char[] characters = config.getCharacters();
+        characterSpace = Arrays.copyOf(characters, characters.length);
         messageBuilder = Objects.requireNonNull(initalMessage);
-        maxMessageLength = maxLength;
+        foundAction = Objects.requireNonNull(action);
+        maxMessageLength = config.getMaxLength();
         // Initialise objects we require.
         digestBuffer = new byte[algorithm.getDigestLength()];
         stringEncoder = CHARSET.newEncoder(); //!!!
@@ -85,13 +92,6 @@ public class CharacterBruteForcerTask implements Runnable {
     private void dive() throws DigestException {
         final String generatedKey = messageBuilder.toString();
         ////////////////////////////////////////////////////////////////
-        /*
-         * Leave this line commented out unless you want to see every
-         * key being generated which significantly slows down the
-         * process.
-         */
-//        System.out.println("[" + generatedKey + "]");
-        ////////////////////////////////////////////////////////////////
         // Append the generated key string into the character buffer.
         charBuffer.append(generatedKey, 0, generatedKey.length());
         charBuffer.flip();
@@ -104,14 +104,15 @@ public class CharacterBruteForcerTask implements Runnable {
         algorithm.digest(digestBuffer, 0, digestBuffer.length);
         // Clear buffers ready for next time.
         charBuffer.clear();
-        stringByteBuffer.clear();
         /*
          * Check if it generated the same hash as the one we are looking
          * for.
          */
         if (Arrays.equals(digestBuffer, hash)) {
-            System.out.println("Key candidate found: " + generatedKey);
+            foundAction.accept(Arrays.copyOf(stringByteBuffer.array(),
+                    stringByteBuffer.remaining()));
         }
+        stringByteBuffer.clear();
         /*
          * Check if we do not need to dive any deeper. Failing to check for
          * this will result in a stack overflow.

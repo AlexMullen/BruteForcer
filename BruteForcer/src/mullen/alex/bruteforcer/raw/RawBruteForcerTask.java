@@ -1,14 +1,15 @@
-package mullen.alex.bruteforcer;
+package mullen.alex.bruteforcer.raw;
 
 import java.io.UnsupportedEncodingException;
 import java.security.DigestException;
 import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import javax.xml.bind.DatatypeConverter;
+import mullen.alex.bruteforcer.Configuration;
 
 /**
  * Represents a brute forcer task that generates every possible arrangement of
@@ -30,6 +31,8 @@ public class RawBruteForcerTask implements Runnable {
     private final byte[] hash;
     /** The maximum length of message to generate and try. */
     private final int maxMessageLength;
+    /** The action to take when a successful message is found. */
+    private final Consumer<byte[]> foundAction;
     ////////////////////////////////////////////////////////////////////////////
     /** A reusable buffer for storing a generated digest. */
     private final byte[] hashBuffer;
@@ -39,16 +42,18 @@ public class RawBruteForcerTask implements Runnable {
      * Creates a new instance.
      *
      * @param algo            the algorithm to use
-     * @param h               the hash to brute force
-     * @param maxMsgLength    the maximum length of message to generate
+     * @param config          job information
      * @param initialMessage  the initial prefix message to start with
+     * @param action          the action to take when a message is found
      */
-    public RawBruteForcerTask(final MessageDigest algo, final byte[] h,
-            final int maxMsgLength, final int initialMessage) {
+    public RawBruteForcerTask(final MessageDigest algo,
+            final Configuration config, final int initialMessage,
+            final Consumer<byte[]> action) {
         // Passed parameters.
         algorithm = Objects.requireNonNull(algo);
-        hash = Arrays.copyOf(h, h.length);
-        maxMessageLength = maxMsgLength;
+        foundAction = Objects.requireNonNull(action);
+        hash = Arrays.copyOf(config.getDigest(), config.getDigest().length);
+        maxMessageLength = config.getMaxLength();
         // Initialise objects we require.
         generatedBuffer = new byte[maxMessageLength];
         generatedBuffer[0] = (byte) initialMessage;
@@ -74,8 +79,6 @@ public class RawBruteForcerTask implements Runnable {
      */
     private void dive(final int count) throws DigestException,
         UnsupportedEncodingException {
-//        System.out.println(Arrays.toString(
-//                Arrays.copyOf(generatedBuffer, count)));
         algorithm.update(generatedBuffer, 0, count);
         algorithm.digest(hashBuffer, 0, hashBuffer.length);
         /*
@@ -83,12 +86,8 @@ public class RawBruteForcerTask implements Runnable {
          * for.
          */
         if (Arrays.equals(hashBuffer, hash)) {
-            final byte[] messageBytes =
-                    Arrays.copyOf(generatedBuffer, count);
-            System.out.println("Key candidate found: "
-                    + Arrays.toString(messageBytes)
-                    + " = " + DatatypeConverter.printHexBinary(messageBytes)
-                    + " = " + new String(messageBytes, "UTF-8"));
+            // Found an input message!
+            foundAction.accept(Arrays.copyOf(generatedBuffer, count));
         }
         if (count < maxMessageLength) {
             final int nextCount = count + 1;

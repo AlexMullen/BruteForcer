@@ -1,4 +1,4 @@
-package mullen.alex.bruteforcer;
+package mullen.alex.bruteforcer.characters;
 
 /**
  * A very minimal and bespoke string builder implementation that cuts out
