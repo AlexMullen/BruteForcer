@@ -80,10 +80,21 @@ public final class BruteForcer {
      */
     private static void preprocessConfiguration(final Configuration config,
             final DigestDeterminer digestDeterminer) {
-        // Check if we need to guess the digest type.
+        possiblyGuessDigest(config, digestDeterminer);
+        warnIfDigestTypeCouldBeWrongType(config, digestDeterminer);
+        possiblyLimitThreadCount(config);
+    }
+    /**
+     * Possibly guess the digest type if its type is not specified.
+     *
+     * @param config            the configuration
+     * @param digestDeterminer  the digest determiner to use for guessing what
+     *                          type of digest we think it is
+     */
+    private static void possiblyGuessDigest(final Configuration config,
+            final DigestDeterminer digestDeterminer) {
         final byte[] digest = config.getDigest();
-        final String digestType = config.getDigestType();
-        if (digestType == null && digest != null) {
+        if (config.getDigestType() == null && digest != null) {
             System.out.println(
                     "Digest type not specified, will attempt to determine...");
             config.setDigestType(digestDeterminer.determine(digest));
@@ -95,10 +106,20 @@ public final class BruteForcer {
                                 + config.getDigestType());
             }
         }
-        /*
-         * Print a warning if the specified hash type differs with what we guess
-         * it to be.
-         */
+    }
+    /**
+     * Prints a warning if the specified hash type differs with what we guess
+     * it to be.
+     *
+     * @param config            the configuration
+     * @param digestDeterminer  the digest determiner to use for guessing what
+     *                          type of digest we think it is
+     */
+    private static void warnIfDigestTypeCouldBeWrongType(
+            final Configuration config,
+            final DigestDeterminer digestDeterminer) {
+        final byte[] digest = config.getDigest();
+        final String digestType = config.getDigestType();
         if (digestType != null) {
             final String digestTypeGuess = digestDeterminer.determine(digest);
             if (!digestType.equalsIgnoreCase(digestTypeGuess)) {
@@ -107,7 +128,14 @@ public final class BruteForcer {
                         + "' was specified!");
             }
         }
-        // Limit the thread count to the number of available processors.
+    }
+    /**
+     * Limits the thread count to the number of available processors if the
+     * specified thread count exceeds the processor count on the current system.
+     *
+     * @param config  the configuration
+     */
+    private static void possiblyLimitThreadCount(final Configuration config) {
         final int processorCount = Runtime.getRuntime().availableProcessors();
         if (config.getMaxThreads() > processorCount) {
             config.setMaxThreads(processorCount);
