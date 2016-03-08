@@ -28,6 +28,8 @@ public class ArgConfigurationProvider implements ConfigurationProvider {
     public static final String CMD_OPTION_CHARS = "chars";
     /** Represents the option for specifying the thread count. */
     public static final String CMD_OPTION_THREADS = "threads";
+    /** Represents the option for specifying a file. */
+    public static final String CMD_OPTION_FILE = "file";
     ////////////////////////////////////////////////////////////////////////////
     /** The passed arguments. */
     private final CommandLine arguments;
@@ -48,14 +50,14 @@ public class ArgConfigurationProvider implements ConfigurationProvider {
     }
     @Override
     public final Configuration retrieveConfiguration() {
-        final Configuration config = new Configuration();
-        config.setMethodName(arguments.getOptionValue(CMD_OPTION_METHOD));
-        config.setDigest(parseHash(arguments));
-        config.setDigestType(arguments.getOptionValue(CMD_OPTION_TYPE));
-        config.setMaxLength(parseMaxLength(arguments));
-        config.setMaxThreads(parseThreads(arguments));
-        config.setCharacters(parseChars(arguments));
-        return config;
+        return new Configuration()
+            .setMethodName(arguments.getOptionValue(CMD_OPTION_METHOD))
+            .setDigest(parseHash(arguments))
+            .setDigestType(arguments.getOptionValue(CMD_OPTION_TYPE))
+            .setMaxLength(parseMaxLength(arguments))
+            .setMaxThreads(parseThreads(arguments))
+            .setCharacters(parseChars(arguments))
+            .setFilePath(parseFile(arguments));
     }
     /**
      * Initialises and returns the command line options.
@@ -64,18 +66,17 @@ public class ArgConfigurationProvider implements ConfigurationProvider {
      */
     private static Options initCmdOptions() {
         final Options options = new Options();
-        options.addOption(CMD_OPTION_TYPE, true, "the type of hash");
-        options.addOption(CMD_OPTION_HASH, true,
-                "the hash in hexadecimal format");
-        options.addOption(CMD_OPTION_METHOD, true,
-                "[raw|chars] the method for brute forcing");
-        options.addOption(CMD_OPTION_CHARS, true,
-                "the set of characters to use when method=chars");
-        options.addOption(CMD_OPTION_MAXLENGTH, true,
-                "the maximum message length in either chars or bytes to try");
-        options.addOption(CMD_OPTION_THREADS, true,
-                "the number of threads to use");
-        return options;
+        return options.addOption(CMD_OPTION_TYPE, true, "the type of hash")
+            .addOption(CMD_OPTION_HASH, true, "the hash in hexadecimal format")
+            .addOption(CMD_OPTION_METHOD, true,
+                    "[raw|chars] the method for brute forcing")
+            .addOption(CMD_OPTION_CHARS, true,
+                    "the set of characters to use when method=chars")
+            .addOption(CMD_OPTION_MAXLENGTH, true,
+                "the maximum message length in either chars or bytes to try")
+            .addOption(CMD_OPTION_THREADS, true,
+                    "the number of threads to use")
+            .addOption(CMD_OPTION_FILE, true, "a file argument");
     }
     /**
      * Parses the hash from the command line arguments.
@@ -135,5 +136,18 @@ public class ArgConfigurationProvider implements ConfigurationProvider {
             chars = charsStr.toCharArray();
         }
         return chars;
+    }
+    /**
+     * Parses the file option from the command line arguments.
+     *
+     * @param args  the command line arguments
+     * @return      the file
+     */
+    private static String parseFile(final CommandLine args) {
+        String file = null;
+        if (args.hasOption(CMD_OPTION_FILE)) {
+            file = args.getOptionValue(CMD_OPTION_FILE);
+        }
+        return file;
     }
 }

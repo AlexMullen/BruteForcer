@@ -68,18 +68,26 @@ public final class BruteForcer {
             if (methodImp == null) {
                 LOG.log(Level.SEVERE, "Unknown method: " + methodName);
             } else {
-                methodImp.printJobDetails(config);
-                System.out.println("Estimating time required...");
-                final BigInteger secsRequired =
-                        methodImp.estimateTimeRequired(config);
-                System.out.println("Estimated time required: " + secsRequired
-                        + " second(s)");
-                methodImp.run(config, msg -> printFoundMessage(msg));
+                if (methodImp.validateConfig(config)) {
+                    methodImp.printJobDetails(config);
+                    System.out.println("Estimating time required...");
+                    final BigInteger secsRequired =
+                            methodImp.estimateTimeRequired(config);
+                    System.out.print("Estimated time required: ");
+                    if (secsRequired == BigInteger.ZERO) {
+                        System.out.println("Unknown");
+                    } else {
+                        System.out.println(secsRequired + " second(s)");
+                    }
+                    methodImp.run(config, msg -> printFoundMessage(msg));
+                }
             }
         }
     }
     /**
      * Preprocesses a configuration.
+     * <p>
+     * No validation is performed by this.
      *
      * @param config            the configuration to preprocess
      * @param digestDeterminer  the digest determiner to possibly use for

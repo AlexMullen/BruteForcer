@@ -102,6 +102,31 @@ public class CharacterMethod implements BruteForceMethod {
         System.out.println("Total permuations possible: "
                 + NumberFormat.getInstance().format(totalPermutations));
     }
+    @Override
+    public final boolean validateConfig(final Configuration config) {
+        boolean isValid = true;
+        if (config.getDigest() == null) {
+            LOG.log(Level.SEVERE, "No hash provided.");
+            isValid = false;
+        }
+        if (config.getDigestType() == null) {
+            LOG.log(Level.SEVERE, "Hash type is not specified.");
+            isValid = false;
+        }
+        if (config.getCharacters() == null) {
+            LOG.log(Level.SEVERE, "No set of characters specified.");
+            isValid = false;
+        }
+        if (config.getMaxLength() < 1) {
+            LOG.log(Level.SEVERE, "Maximum length is less than one.");
+            isValid = false;
+        }
+        if (config.getMaxThreads() < 1) {
+            LOG.log(Level.SEVERE, "Maximum threads is less than one.");
+            isValid = false;
+        }
+        return isValid;
+    }
     /**
      * Performs a dry run of the method so that an estimate can be retrieved
      * as to how fast the current system is.
@@ -145,7 +170,7 @@ public class CharacterMethod implements BruteForceMethod {
     /**
      * Performs the character method of brute forcing.
      *
-     * @param config       the configuration
+     * @param config         the configuration
      * @param messageAction  the action to perform when a message is found
      *
      * @throws NoSuchAlgorithmException  if the system does not provide a

@@ -21,6 +21,8 @@ public class Configuration {
     private int maxThreads;
     /** Holds the set of characters to use. */
     private char[] characters;
+    /** Holds the path to the file to use. */
+    private String filePath;
     /**
      * Creates a new instance.
      */
@@ -40,6 +42,7 @@ public class Configuration {
         digestType = config.digestType;
         maxLength = config.maxLength;
         maxThreads = config.maxThreads;
+        filePath = config.filePath;
         if (config.digest != null) {
             digest = Arrays.copyOf(config.digest, config.digest.length);
         }
@@ -72,7 +75,11 @@ public class Configuration {
      * @return  a copy of the digest held within
      */
     public final byte[] getDigest() {
-        return Arrays.copyOf(digest, digest.length);
+        byte[] digestToReturn = null;
+        if (digest != null) {
+            digestToReturn = Arrays.copyOf(digest, digest.length);
+        }
+        return digestToReturn;
     }
     /**
      * Sets the digest.
@@ -149,7 +156,11 @@ public class Configuration {
      * @return  the characters
      */
     public final char[] getCharacters() {
-        return Arrays.copyOf(characters, characters.length);
+        char[] charsToReturn = null;
+        if (characters != null) {
+            charsToReturn = Arrays.copyOf(characters, characters.length);
+        }
+        return charsToReturn;
     }
     /**
      * Sets the characters to use.
@@ -164,6 +175,24 @@ public class Configuration {
         } else {
             characters = Arrays.copyOf(newCharacters, newCharacters.length);
         }
+        return this;
+    }
+    /**
+     * Gets the file path.
+     *
+     * @return  the file path
+     */
+    public final String getFilePath() {
+        return filePath;
+    }
+    /**
+     * Sets the file path.
+     *
+     * @param newPath  the new file path
+     * @return         a reference to this configuration for method chaining
+     */
+    public final Configuration setFilePath(final String newPath) {
+        filePath = newPath;
         return this;
     }
 }

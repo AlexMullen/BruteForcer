@@ -98,6 +98,27 @@ public class RawMethod implements BruteForceMethod {
         System.out.println("Total permuations possible: "
                 + NumberFormat.getInstance().format(totalPermutations));
     }
+    @Override
+    public final  boolean validateConfig(final Configuration config) {
+        boolean isValid = true;
+        if (config.getDigest() == null) {
+            LOG.log(Level.SEVERE, "No hash provided.");
+            isValid = false;
+        }
+        if (config.getDigestType() == null) {
+            LOG.log(Level.SEVERE, "Hash type is not specified.");
+            isValid = false;
+        }
+        if (config.getMaxLength() < 1) {
+            LOG.log(Level.SEVERE, "Maximum length is less than one.");
+            isValid = false;
+        }
+        if (config.getMaxThreads() < 1) {
+            LOG.log(Level.SEVERE, "Maximum threads is less than one.");
+            isValid = false;
+        }
+        return isValid;
+    }
     /**
      * Performs the raw method of brute forcing.
      *
