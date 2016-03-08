@@ -1,7 +1,6 @@
 package mullen.alex.bruteforcer;
 
 import java.io.UnsupportedEncodingException;
-import java.math.BigInteger;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -55,39 +54,25 @@ public final class BruteForcer {
             LOG.log(Level.SEVERE, "Failed to retrieve configuration.");
             return;
         }
-        preprocessConfiguration(config, new DefaultDigestDeterminer());
-        if (config.getMethodName() == null) {
+        final String methodName = config.getMethodName();
+        if (methodName == null) {
             LOG.log(Level.SEVERE, "No brute force method specified.");
+            return;
+        }
+        preprocessConfiguration(config, new DefaultDigestDeterminer());
+        final Map<String, BruteForceMethod> methods = new HashMap<>(3);
+        methods.put("raw", new RawMethod());
+        methods.put("chars", new CharacterMethod());
+        methods.put("dictionary", new DictionaryMethod());
+        final BruteForceMethod methodImp = methods.get(methodName);
+        if (methodImp == null) {
+            LOG.log(Level.SEVERE, "Unknown method: " + methodName);
         } else {
-            final Map<String, BruteForceMethod> methods = new HashMap<>();
-            methods.put("raw", new RawMethod());
-            methods.put("chars", new CharacterMethod());
-            methods.put("dictionary", new DictionaryMethod());
-            final String methodName = config.getMethodName();
-            final BruteForceMethod methodImp = methods.get(methodName);
-            if (methodImp == null) {
-                LOG.log(Level.SEVERE, "Unknown method: " + methodName);
-            } else {
-                if (methodImp.validateConfig(config)) {
-                    methodImp.printJobDetails(config);
-                    System.out.println("Estimating time required...");
-                    final BigInteger secsRequired =
-                            methodImp.estimateTimeRequired(config);
-                    System.out.print("Estimated time required: ");
-                    if (secsRequired == BigInteger.ZERO) {
-                        System.out.println("Unknown");
-                    } else {
-                        System.out.println(secsRequired + " second(s)");
-                    }
-                    methodImp.run(config, msg -> printFoundMessage(msg));
-                }
-            }
+            methodImp.run(config, BruteForcer::printFoundMessage);
         }
     }
     /**
      * Preprocesses a configuration.
-     * <p>
-     * No validation is performed by this.
      *
      * @param config            the configuration to preprocess
      * @param digestDeterminer  the digest determiner to possibly use for
@@ -97,7 +82,8 @@ public final class BruteForcer {
             final DigestDeterminer digestDeterminer) {
         // Check if we need to guess the digest type.
         final byte[] digest = config.getDigest();
-        if (config.getDigestType() == null && digest != null) {
+        final String digestType = config.getDigestType();
+        if (digestType == null && digest != null) {
             System.out.println(
                     "Digest type not specified, will attempt to determine...");
             config.setDigestType(digestDeterminer.determine(digest));
@@ -107,6 +93,18 @@ public final class BruteForcer {
                 System.out.println(
                         "Determined that the digest might be of type: "
                                 + config.getDigestType());
+            }
+        }
+        /*
+         * Print a warning if the specified hash type differs with what we guess
+         * it to be.
+         */
+        if (digestType != null) {
+            final String digestTypeGuess = digestDeterminer.determine(digest);
+            if (!digestType.equalsIgnoreCase(digestTypeGuess)) {
+                LOG.log(Level.WARNING, "Digest type looks to be "
+                        + digestTypeGuess + " but '" + digestType
+                        + "' was specified!");
             }
         }
         // Limit the thread count to the number of available processors.

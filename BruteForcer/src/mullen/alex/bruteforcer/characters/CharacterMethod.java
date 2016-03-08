@@ -44,7 +44,14 @@ public class CharacterMethod implements BruteForceMethod {
     @Override
     public final void run(final Configuration config,
             final Consumer<byte[]> messageAction) {
+        if (!validateConfig(config)) {
+            return;
+        }
+        printJobDetails(config);
         try {
+            System.out.println("Estimating time required...");
+            System.out.println("Estimated time required: "
+                    + estimateTimeRequired(config) + " second(s)");
             System.out.println("Brute force started...");
             final long timeStartedAt = System.nanoTime();
             ////////////////////////////////////////////////////////////////////
@@ -66,25 +73,36 @@ public class CharacterMethod implements BruteForceMethod {
             LOG.log(Level.SEVERE, e.toString(), e);
         }
     }
-    @Override
-    public final BigInteger estimateTimeRequired(final Configuration config) {
-        BigInteger timeEstimateSecs = BigInteger.ZERO;
-        try {
-            final BigDecimal avgPermPerSec = performBenchmark(config);
-            final BigInteger totalPermCount =
-                    calculatePermutationCount(config.getCharacters().length,
-                            config.getMaxLength());
-            final BigDecimal estTimeSecs =
-                    new BigDecimal(totalPermCount).divide(
-                            avgPermPerSec, 2, RoundingMode.DOWN);
-            timeEstimateSecs = estTimeSecs.toBigInteger();
-        } catch (final NoSuchAlgorithmException | InterruptedException e) {
-            LOG.log(Level.SEVERE, e.toString(), e);
-        }
-        return timeEstimateSecs;
+    /**
+     * Calculates an estimate for how long the specified job configuration will
+     * take in seconds.
+     *
+     * @param config  the configuration
+     * @return        the estimate in seconds
+     *
+     * @throws NoSuchAlgorithmException  if the system does not provide a
+     *                                   an implementation of the requested
+     *                                   digest algorithm
+     * @throws InterruptedException      if the process is interrupted whilst
+     *                                   waiting for tasks to finish
+     */
+    private static BigInteger estimateTimeRequired(final Configuration config)
+            throws NoSuchAlgorithmException, InterruptedException {
+        final BigDecimal avgPermPerSec = performBenchmark(config);
+        final BigInteger totalPermCount =
+                calculatePermutationCount(config.getCharacters().length,
+                        config.getMaxLength());
+        final BigDecimal estTimeSecs =
+                new BigDecimal(totalPermCount).divide(
+                        avgPermPerSec, 2, RoundingMode.DOWN);
+        return estTimeSecs.toBigInteger();
     }
-    @Override
-    public final void printJobDetails(final Configuration config) {
+    /**
+     * Prints out information about the job from the configuration.
+     *
+     * @param config  the job configuration
+     */
+    private static void printJobDetails(final Configuration config) {
         System.out.println("Hash (" + config.getDigestType() + "): "
                 + DatatypeConverter.printHexBinary(config.getDigest()));
         System.out.print("Using character method up to "
@@ -102,8 +120,15 @@ public class CharacterMethod implements BruteForceMethod {
         System.out.println("Total permuations possible: "
                 + NumberFormat.getInstance().format(totalPermutations));
     }
-    @Override
-    public final boolean validateConfig(final Configuration config) {
+    /**
+     * Validates the specified configuration so that the data required in it
+     * exists and fits with the brute force method constraints.
+     *
+     * @param config  the configuration
+     * @return        <code>true</code> if the configuration is valid; otherwise
+     *                <code>false</code>
+     */
+    private static boolean validateConfig(final Configuration config) {
         boolean isValid = true;
         if (config.getDigest() == null) {
             LOG.log(Level.SEVERE, "No hash provided.");
