@@ -1,5 +1,5 @@
 # BruteForcer
-A hash brute forcer written in Java that was written to further my understanding of how they work so as to demonstrate how fast a computer can crack weak passwords.
+A hash brute forcer written in Java that was written to further my understanding of how they work and demonstrating how fast a computer can crack weak passwords.
 
 To use it you need to pass in the required command-line arguments.
 
